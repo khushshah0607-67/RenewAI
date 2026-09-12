@@ -1,29 +1,32 @@
 {
-  "model_version": "solar-weather-xgb-v1",
-  "algorithm": "XGBoost",
-  "model_type": "Weather-Aware XGBoost",
-  "target": "target_next_15min",
-  "training_period": {
-    "start": "2020-05-16T02:45:00",
-    "end": "2020-06-05T04:15:00"
-  },
-  "calibration_period": {
-    "start": "2020-06-05T04:30:00",
-    "end": "2020-06-11T13:15:00"
-  },
-  "test_period": {
-    "start": "2020-06-11T13:30:00",
-    "end": "2020-06-17T22:45:00"
-  },
-  "features": [
-    "ac_power_kw",
-    "ambient_temperature",
-    "relative_humidity",
-    "cloud_cover",
-    "shortwave_radiation_w_m2",
-    "irradiation",
-    "wind_speed",
-    "wind_direction",
+  "model_name": "RenewAI Generalized Renewable Generation Forecasting Model",
+  "model_version": "renewai-generalized-xgb-v1",
+  "model_type": "XGBoostRegressor",
+  "renewable_types_supported": [
+    "solar",
+    "wind"
+  ],
+  "training_data_sources": [
+    "kaggle_india",
+    "state_grid_solar",
+    "state_grid_wind"
+  ],
+  "feature_columns": [
+    "ambient_temperature_c",
+    "module_temperature_c",
+    "irradiation_w_m2",
+    "direct_normal_irradiance_w_m2",
+    "global_horizontal_irradiance_w_m2",
+    "pressure_hpa",
+    "relative_humidity_pct",
+    "wind_speed_10m_mps",
+    "wind_direction_10m_deg",
+    "wind_speed_30m_mps",
+    "wind_direction_30m_deg",
+    "wind_speed_50m_mps",
+    "wind_direction_50m_deg",
+    "wind_speed_hub_mps",
+    "wind_direction_hub_deg",
     "hour",
     "minute",
     "day_of_week",
@@ -37,21 +40,120 @@
     "lag_1",
     "lag_2",
     "lag_4",
-    "lag_24",
+    "lag_8",
+    "lag_16",
     "lag_96",
     "rolling_mean_4",
-    "rolling_mean_12",
+    "rolling_mean_8",
     "rolling_mean_24",
-    "rolling_std_24"
+    "rolling_std_24",
+    "rolling_max_24",
+    "generation_kw",
+    "installed_capacity_kw",
+    "normalized_generation",
+    "renewable_type_code"
   ],
-  "metrics": {
-    "mae_kw": 1204.047491215447,
-    "rmse_kw": 2419.8187397617753,
-    "nrmse_percent": 8.33014030948746,
-    "nmae_percent": 4.144890845046708
+  "target_definition": "target_next_15min = next observed generation value at the next 15-minute interval.",
+  "units": {
+    "generation": "kW",
+    "weather_temperature": "C",
+    "weather_pressure": "hPa",
+    "weather_speed": "m/s",
+    "weather_direction": "deg",
+    "capacity": "kW"
   },
-  "uncertainty_method": "Residual-based prediction intervals",
-  "plant_capacity_kw": 30000,
-  "training_timestamp": "2026-09-12T10:51:05Z",
-  "model_artifact": "ml/models/solar_weather_xgb.joblib"
+  "capacity_handling": {
+    "strategy": "Use installed_capacity_kw when available to bound and normalize generation; use raw generation when explicit capacity is unavailable.",
+    "capacity_known_sites": [
+      "state_grid_solar_solar_Solar station site 1 (Nominal capacity-50MW)",
+      "state_grid_solar_solar_Solar station site 2 (Nominal capacity-130MW)",
+      "state_grid_solar_solar_Solar station site 3 (Nominal capacity-30MW)",
+      "state_grid_solar_solar_Solar station site 4 (Nominal capacity-130MW)",
+      "state_grid_solar_solar_Solar station site 5 (Nominal capacity-110MW)",
+      "state_grid_solar_solar_Solar station site 6 (Nominal capacity-35MW)",
+      "state_grid_solar_solar_Solar station site 7 (Nominal capacity-30MW)",
+      "state_grid_solar_solar_Solar station site 8 (Nominal capacity-30MW)",
+      "state_grid_wind_wind_Wind farm site 1 (Nominal capacity-99MW)",
+      "state_grid_wind_wind_Wind farm site 2 (Nominal capacity-200MW)",
+      "state_grid_wind_wind_Wind farm site 3 (Nominal capacity-99MW)",
+      "state_grid_wind_wind_Wind farm site 4 (Nominal capacity-66MW)",
+      "state_grid_wind_wind_Wind farm site 5 (Nominal capacity-36MW)",
+      "state_grid_wind_wind_Wind farm site 6 (Nominal capacity-96MW)"
+    ],
+    "capacity_unknown_sites": [
+      "kaggle_4135001",
+      "kaggle_4136001"
+    ]
+  },
+  "training_date": "2026-09-12T17:48:39.238742+00:00",
+  "evaluation_metrics": {
+    "seen_site_test": {
+      "mae_kw": 1463.1053131818962,
+      "rmse_kw": 3482.6773338858225,
+      "nmae_percent": 1.5240680345644753,
+      "nrmse_percent": 3.6277888894643984,
+      "rows": 187311
+    },
+    "unseen_site_holdout": {
+      "mae_kw": 2561.720890200389,
+      "rmse_kw": 4579.951449375157,
+      "nmae_percent": 2.5875968587882716,
+      "nrmse_percent": 4.626213585227431,
+      "rows": 73140
+    }
+  },
+  "limitations": [
+    "Kaggle sites do not provide explicit installed capacity in the raw files, so normalized_generation remains null for those rows.",
+    "Future forecast weather must still be supplied at inference time; the trained model uses historical observed weather during development.",
+    "The horizon summary in this run is alignment-based and is not a recursive multi-step forecasting implementation."
+  ],
+  "explainability": {
+    "status": "available",
+    "sample_rows": 2000,
+    "output_path": "data\\processed\\generalized_training\\shap_feature_contributions.csv",
+    "top_features": [
+      {
+        "feature": "generation_kw",
+        "mean_absolute_shap": 19598.39453125
+      },
+      {
+        "feature": "lag_2",
+        "mean_absolute_shap": 907.4418334960938
+      },
+      {
+        "feature": "lag_1",
+        "mean_absolute_shap": 874.4849243164062
+      },
+      {
+        "feature": "normalized_generation",
+        "mean_absolute_shap": 491.81011962890625
+      },
+      {
+        "feature": "installed_capacity_kw",
+        "mean_absolute_shap": 369.7195129394531
+      },
+      {
+        "feature": "rolling_mean_4",
+        "mean_absolute_shap": 363.3714294433594
+      },
+      {
+        "feature": "rolling_mean_8",
+        "mean_absolute_shap": 159.66433715820312
+      },
+      {
+        "feature": "lag_4",
+        "mean_absolute_shap": 153.86587524414062
+      },
+      {
+        "feature": "pressure_hpa",
+        "mean_absolute_shap": 140.4632568359375
+      },
+      {
+        "feature": "hour_sin",
+        "mean_absolute_shap": 134.7165069580078
+      }
+    ]
+  },
+  "model_artifact": "ml/models/renewai_generalized_xgb.joblib",
+  "training_timestamp": "2026-09-12T17:48:39.238742+00:00"
 }

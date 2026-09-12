@@ -1,8 +1,7 @@
 import json
 import unittest
-from pathlib import Path
 
-from ml.models.create_model_metadata import METADATA_PATH, build_metadata, load_model_payload
+from ml.models.create_model_metadata import METADATA_PATH, load_model_payload
 
 
 class TestModelMetadata(unittest.TestCase):
@@ -17,19 +16,19 @@ class TestModelMetadata(unittest.TestCase):
             metadata = json.load(handle)
 
         required_fields = [
+            "model_name",
             "model_version",
-            "algorithm",
             "model_type",
-            "target",
-            "training_period",
-            "calibration_period",
-            "test_period",
-            "features",
-            "metrics",
-            "uncertainty_method",
-            "plant_capacity_kw",
-            "training_timestamp",
-            "model_artifact",
+            "renewable_types_supported",
+            "training_data_sources",
+            "feature_columns",
+            "target_definition",
+            "units",
+            "capacity_handling",
+            "training_date",
+            "evaluation_metrics",
+            "limitations",
+            "explainability",
         ]
 
         for field in required_fields:
@@ -41,46 +40,31 @@ class TestModelMetadata(unittest.TestCase):
 
         self.assertTrue(metadata["model_version"])
 
-    def test_algorithm_exists(self):
+    def test_model_type_exists(self):
         with self.metadata_path.open("r", encoding="utf-8") as handle:
             metadata = json.load(handle)
 
-        self.assertEqual(metadata["algorithm"], "XGBoost")
+        self.assertEqual(metadata["model_type"], "XGBoostRegressor")
 
     def test_features_exists_and_is_non_empty(self):
         with self.metadata_path.open("r", encoding="utf-8") as handle:
             metadata = json.load(handle)
 
-        self.assertIsInstance(metadata["features"], list)
-        self.assertTrue(metadata["features"])
+        self.assertIsInstance(metadata["feature_columns"], list)
+        self.assertTrue(metadata["feature_columns"])
 
-    def test_metrics_exist(self):
+    def test_evaluation_metrics_exist(self):
         with self.metadata_path.open("r", encoding="utf-8") as handle:
             metadata = json.load(handle)
 
-        self.assertIsInstance(metadata["metrics"], dict)
-        self.assertIn("mae_kw", metadata["metrics"])
-        self.assertIn("rmse_kw", metadata["metrics"])
-        self.assertIn("nrmse_percent", metadata["metrics"])
-        self.assertIn("nmae_percent", metadata["metrics"])
-
-    def test_uncertainty_method_exists(self):
-        with self.metadata_path.open("r", encoding="utf-8") as handle:
-            metadata = json.load(handle)
-
-        self.assertTrue(metadata["uncertainty_method"])
-
-    def test_plant_capacity_kw_is_30000(self):
-        with self.metadata_path.open("r", encoding="utf-8") as handle:
-            metadata = json.load(handle)
-
-        self.assertEqual(metadata["plant_capacity_kw"], 30000)
+        self.assertIsInstance(metadata["evaluation_metrics"], dict)
+        self.assertIn("seen_site_test", metadata["evaluation_metrics"])
 
     def test_model_artifact_uses_project_relative_path(self):
         with self.metadata_path.open("r", encoding="utf-8") as handle:
             metadata = json.load(handle)
 
-        self.assertEqual(metadata["model_artifact"], "ml/models/solar_weather_xgb.joblib")
+        self.assertTrue(metadata["model_artifact"].endswith("renewai_generalized_xgb.joblib"))
         self.assertFalse(metadata["model_artifact"].startswith(("C:\\", "/")))
 
     def test_feature_order_matches_saved_model_when_available(self):
@@ -89,7 +73,7 @@ class TestModelMetadata(unittest.TestCase):
         with self.metadata_path.open("r", encoding="utf-8") as handle:
             metadata = json.load(handle)
 
-        self.assertEqual(metadata["features"], payload["feature_columns"])
+        self.assertEqual(metadata["feature_columns"], payload["feature_columns"])
 
 
 if __name__ == "__main__":

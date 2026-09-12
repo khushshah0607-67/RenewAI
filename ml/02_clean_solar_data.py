@@ -1,12 +1,14 @@
+from pathlib import Path
+
 import pandas as pd
 import numpy as np
 
-# Set the paths of the raw CSV files
-generation_path = "data/raw/Plant_1_Generation_Data.csv"
-weather_path = "data/raw/Plant_1_Weather_Sensor_Data.csv"
+ROOT = Path(__file__).resolve().parents[1]
+generation_path = ROOT / "data" / "raw" / "kaggle_india" / "Plant_1_Generation_Data.csv"
+weather_path = ROOT / "data" / "raw" / "kaggle_india" / "Plant_1_Weather_Sensor_Data.csv"
 
 # Set the path for the cleaned dataset
-output_path = "data/processed/solar_plant1_clean.csv"
+output_path = ROOT / "data" / "processed" / "solar_plant1_clean.csv"
 
 # Load the raw datasets
 print("Loading raw datasets...")

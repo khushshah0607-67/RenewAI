@@ -108,6 +108,26 @@ def _build_success_response(
     return payload
 
 
+def _solar_zero_mask(weather_df: pd.DataFrame | None) -> list[bool]:
+    if weather_df is None or weather_df.empty:
+        return []
+
+    mask = []
+    for _, weather_row in weather_df.iterrows():
+        shortwave = pd.to_numeric(weather_row.get("shortwave_radiation_w_m2", None), errors="coerce")
+        irradiation = pd.to_numeric(weather_row.get("irradiation", None), errors="coerce")
+
+        is_low_radiation = False
+        if pd.notna(shortwave) and shortwave <= 1:
+            is_low_radiation = True
+        elif pd.notna(irradiation) and irradiation <= 0.001:
+            is_low_radiation = True
+
+        mask.append(is_low_radiation)
+
+    return mask
+
+
 def predict_generation(plant_data, historical_data, weather_data):
     """Stable backend-friendly ML prediction interface.
 
@@ -119,12 +139,26 @@ def predict_generation(plant_data, historical_data, weather_data):
         metadata = load_model_metadata()
         plant = normalize_plant_data(plant_data)
 
-        historical_df = _prepare_historical_data(historical_data)
+        try:
+            historical_df = _prepare_historical_data(historical_data)
+        except ContractError as exc:
+            if exc.code == "INVALID_INPUT" and "invalid timestamp values" in exc.message:
+                return build_persistence_fallback(
+                    plant_data,
+                    historical_data,
+                    weather_data,
+                    "INVALID_INPUT",
+                    metadata,
+                )
+            raise
 
         if len(historical_df) < 97:
-            raise ContractError(
-                "MISSING_DATA",
-                "Insufficient historical generation data for lag_96 feature generation.",
+            return build_persistence_fallback(
+                plant_data,
+                historical_df,
+                weather_data,
+                "INSUFFICIENT_HISTORY",
+                metadata,
             )
 
         weather_df = _prepare_weather_data(weather_data)
@@ -151,6 +185,7 @@ def predict_generation(plant_data, historical_data, weather_data):
         legacy_plant_data = {
             "plant_id": plant["plant_id"],
             "capacity_kw": plant["plant_capacity_kw"],
+            "renewable_type": plant.get("renewable_type", "solar"),
         }
 
         raw_results = _legacy_predict_generation(
@@ -166,7 +201,21 @@ def predict_generation(plant_data, historical_data, weather_data):
             )
 
         forecast = []
-        for row in raw_results:
+        solar_zero_mask = []
+        if plant.get("renewable_type", "solar") == "solar":
+            weather_for_mask = weather_df.copy()
+            if len(raw_results) > len(weather_for_mask):
+                weather_for_mask = (
+                    weather_for_mask.set_index("timestamp")
+                    .resample("15min")
+                    .interpolate(method="time")
+                    .dropna()
+                    .reset_index()
+                )
+                weather_for_mask = weather_for_mask.iloc[: len(raw_results)].copy()
+            solar_zero_mask = _solar_zero_mask(weather_for_mask)
+
+        for index, row in enumerate(raw_results):
             if not isinstance(row, dict):
                 raise ContractError(
                     "MODEL_ERROR",
@@ -187,6 +236,11 @@ def predict_generation(plant_data, historical_data, weather_data):
                 p10 = p50
             if p90 < p50:
                 p90 = p50
+
+            if solar_zero_mask and solar_zero_mask[index]:
+                p10 = 0.0
+                p50 = 0.0
+                p90 = 0.0
 
             forecast.append(
                 {

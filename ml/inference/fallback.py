@@ -157,10 +157,13 @@ def normalize_plant_data(plant_data: Any) -> dict[str, Any]:
             "plant_capacity_kw must be greater than zero.",
         )
 
+    renewable_type = plant_data.get("renewable_type") or plant_data.get("type") or "solar"
+
     return {
         "plant_id": str(plant_id),
         "plant_capacity_kw": plant_capacity_kw,
         "timezone": plant_data.get("timezone") or "UTC",
+        "renewable_type": str(renewable_type).lower(),
     }
 
 
@@ -216,12 +219,15 @@ def build_persistence_fallback(
 
     historical_df = coerce_dataframe(historical_data, "historical_data", allow_empty=False)
     validate_required_columns(historical_df, ["timestamp", "ac_power_kw"], "historical_data")
-    historical_df = validate_timestamp_columns(historical_df, "historical_data")
 
+    historical_df = historical_df.copy()
+    historical_df["timestamp"] = pd.to_datetime(historical_df["timestamp"], errors="coerce")
     historical_df["ac_power_kw"] = pd.to_numeric(
         historical_df["ac_power_kw"], errors="coerce"
     )
-    historical_df = historical_df.dropna(subset=["ac_power_kw"]).reset_index(drop=True)
+
+    historical_df = historical_df.dropna(subset=["timestamp", "ac_power_kw"]).sort_values("timestamp")
+    historical_df = historical_df.drop_duplicates(subset=["timestamp"]).reset_index(drop=True)
 
     if historical_df.empty:
         raise ContractError(
@@ -241,13 +247,16 @@ def build_persistence_fallback(
     start_timestamp = latest_timestamp + pd.Timedelta(minutes=15)
     forecast = []
 
+    renewable_type = plant.get("renewable_type", "solar")
+    solar_mode = renewable_type == "solar"
+
     for offset in range(forecast_points):
         point_timestamp = start_timestamp + pd.Timedelta(minutes=15 * offset)
         hour = point_timestamp.hour
-        if 6 <= hour < 18:
-            forecast_kw = latest_valid_generation
+        if solar_mode:
+            forecast_kw = latest_valid_generation if 6 <= hour < 18 else 0.0
         else:
-            forecast_kw = 0.0
+            forecast_kw = latest_valid_generation
 
         forecast_kw = min(max(float(forecast_kw), 0.0), float(plant["plant_capacity_kw"]))
 

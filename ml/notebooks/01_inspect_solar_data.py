@@ -1,9 +1,11 @@
+from pathlib import Path
+
 import pandas as pd
 import numpy as np
 
-# Set the paths of the input CSV files
-generation_path = "data/raw/Plant_1_Generation_Data.csv"
-weather_path = "data/raw/Plant_1_Weather_Sensor_Data.csv"
+ROOT = Path(__file__).resolve().parents[2]
+generation_path = ROOT / "data" / "raw" / "kaggle_india" / "Plant_1_Generation_Data.csv"
+weather_path = ROOT / "data" / "raw" / "kaggle_india" / "Plant_1_Weather_Sensor_Data.csv"
 
 # Load the generation and weather datasets
 print("Loading datasets...")
