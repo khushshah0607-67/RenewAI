@@ -7,11 +7,16 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
+from app.core.config import get_settings
+
 logger = logging.getLogger(__name__)
 
 
 class OpenMeteoClient:
-    base_url = "https://api.open-meteo.com/v1/forecast"
+    def __init__(self) -> None:
+        self.settings = get_settings()
+        self.base_url = self.settings.weather_provider_base_url.rstrip("/")
+        self.timeout_seconds = self.settings.weather_provider_timeout_seconds
 
     def fetch_hourly_weather(
         self,
@@ -20,18 +25,20 @@ class OpenMeteoClient:
         timezone_name: str,
         start: datetime | None = None,
         end: datetime | None = None,
-        forecast_days: int = 3,
+        forecast_days: int | None = None,
     ) -> list[dict]:
         normalized_timezone = timezone_name or "auto"
         if normalized_timezone not in {"auto"} and "/" not in normalized_timezone and normalized_timezone.upper() not in {"UTC", "GMT"}:
             normalized_timezone = "auto"
+
+        effective_forecast_days = self.settings.weather_forecast_days if forecast_days is None else forecast_days
 
         params: dict[str, str | float | int] = {
             "latitude": latitude,
             "longitude": longitude,
             "timezone": normalized_timezone,
             "hourly": "temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,cloud_cover,precipitation,shortwave_radiation",
-            "forecast_days": forecast_days,
+            "forecast_days": effective_forecast_days,
         }
 
         if start is not None:
@@ -43,7 +50,7 @@ class OpenMeteoClient:
         logger.info("Open-Meteo request URL: %s", url)
 
         try:
-            with urlopen(url, timeout=20) as response:
+            with urlopen(url, timeout=self.timeout_seconds) as response:
                 payload = json.loads(response.read().decode("utf-8"))
         except HTTPError as exc:
             try:

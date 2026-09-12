@@ -6,13 +6,24 @@ from sqlalchemy.orm import Session
 from app.db.models.plant import Plant
 from app.schemas.plant import PlantCreate, PlantUpdate
 
+DEFAULT_QUERY_LIMIT = 100
+MAX_QUERY_LIMIT = 1000
+
 
 class PlantRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def list(self) -> Sequence[Plant]:
-        return self.db.scalars(select(Plant).order_by(Plant.id)).all()
+    @staticmethod
+    def _resolve_limit(limit: int | None) -> int:
+        if limit is None:
+            return DEFAULT_QUERY_LIMIT
+        return min(max(limit, 1), MAX_QUERY_LIMIT)
+
+    def list(self, limit: int | None = None, offset: int = 0) -> Sequence[Plant]:
+        stmt = select(Plant).order_by(Plant.id.asc())
+        stmt = stmt.offset(max(offset, 0)).limit(self._resolve_limit(limit))
+        return self.db.scalars(stmt).all()
 
     def get_by_id(self, plant_id: int) -> Plant | None:
         return self.db.get(Plant, plant_id)

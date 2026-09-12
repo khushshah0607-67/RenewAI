@@ -7,8 +7,8 @@ class PlantService:
     def __init__(self, db):
         self.repository = PlantRepository(db)
 
-    def list_plants(self) -> list[Plant]:
-        return list(self.repository.list())
+    def list_plants(self, limit: int | None = None, offset: int = 0) -> list[Plant]:
+        return list(self.repository.list(limit=limit, offset=offset))
 
     def get_plant(self, plant_id: int) -> Plant | None:
         return self.repository.get_by_id(plant_id)

@@ -24,8 +24,12 @@ class GenerationUploadSummary(BaseModel):
     rows_inserted: int
     rows_rejected: int
     duplicate_count: int
+    gap_count: int = 0
+    detected_resolution: str | None = None
     min_timestamp: datetime | None = None
     max_timestamp: datetime | None = None
+    valid_row_count: int = 0
+    ml_ready_15min: bool = False
     errors: list[str] | None = None
 
     model_config = ConfigDict(from_attributes=True)

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 
 from app.db.database import Base
@@ -9,7 +9,7 @@ from app.db.database import Base
 class Forecast(Base):
     __tablename__ = "forecasts"
     __table_args__ = (
-        __import__("sqlalchemy").Index("ix_forecasts_plant_id_forecast_timestamp", "plant_id", "forecast_timestamp"),
+        UniqueConstraint("plant_id", "forecast_timestamp", name="uq_forecasts_plant_timestamp"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)

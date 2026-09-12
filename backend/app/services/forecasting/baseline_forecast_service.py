@@ -58,8 +58,15 @@ class BaselineForecastService:
         self.repository.replace_for_plant(plant_id, generated_records)
         return generated_records
 
-    def list_for_plant(self, plant_id: int) -> list[Forecast]:
-        records = self.repository.get_for_plant(plant_id)
-        if not records:
-            return self.generate_for_plant(plant_id)
-        return records
+    def list_for_plant(
+        self,
+        plant_id: int,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> list[Forecast]:
+        records = self.repository.get_for_plant(plant_id, start=start, end=end, limit=limit, offset=offset)
+        if records or (start is not None or end is not None or limit is not None or offset > 0):
+            return records
+        return self.generate_for_plant(plant_id)

@@ -1,8 +1,11 @@
 from datetime import datetime
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
+from app.core.time_utils import normalize_datetime_to_utc
 from app.db.database import get_db
 from app.db.models.historical_generation import HistoricalGeneration
 from app.db.models.plant import Plant
@@ -27,8 +30,12 @@ def create_plant(
 
 
 @router.get("", response_model=list[PlantResponse])
-def list_plants(service: PlantService = Depends(get_plant_service)) -> list[Plant]:
-    return service.list_plants()
+def list_plants(
+    limit: int | None = Query(default=None, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
+    service: PlantService = Depends(get_plant_service),
+) -> list[Plant]:
+    return service.list_plants(limit=limit, offset=offset)
 
 
 @router.get("/{plant_id}", response_model=PlantResponse)
@@ -89,9 +96,10 @@ def upload_generation_csv(
 @router.get("/{plant_id}/generation", response_model=list[HistoricalGenerationResponse])
 def list_generation_records(
     plant_id: int,
-    start: datetime | None = None,
-    end: datetime | None = None,
-    limit: int | None = Query(default=None, ge=1),
+    start: datetime | None = Query(default=None),
+    end: datetime | None = Query(default=None),
+    limit: int | None = Query(default=None, ge=1, le=5000),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ) -> list[HistoricalGeneration]:
     service = PlantService(db)
@@ -99,5 +107,17 @@ def list_generation_records(
     if plant is None:
         raise HTTPException(status_code=404, detail="Plant not found")
 
+    try:
+        normalized_start = normalize_datetime_to_utc(start, plant.timezone) if start is not None else None
+        normalized_end = normalize_datetime_to_utc(end, plant.timezone) if end is not None else None
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     generation_service = GenerationService(db)
-    return generation_service.list_generation(plant_id, start=start, end=end, limit=limit)
+    return generation_service.list_generation(
+        plant_id,
+        start=normalized_start,
+        end=normalized_end,
+        limit=limit,
+        offset=offset,
+    )
