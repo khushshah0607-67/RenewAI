@@ -1,0 +1,57 @@
+{
+  "model_version": "solar-weather-xgb-v1",
+  "algorithm": "XGBoost",
+  "model_type": "Weather-Aware XGBoost",
+  "target": "target_next_15min",
+  "training_period": {
+    "start": "2020-05-16T02:45:00",
+    "end": "2020-06-05T04:15:00"
+  },
+  "calibration_period": {
+    "start": "2020-06-05T04:30:00",
+    "end": "2020-06-11T13:15:00"
+  },
+  "test_period": {
+    "start": "2020-06-11T13:30:00",
+    "end": "2020-06-17T22:45:00"
+  },
+  "features": [
+    "ac_power_kw",
+    "ambient_temperature",
+    "relative_humidity",
+    "cloud_cover",
+    "shortwave_radiation_w_m2",
+    "irradiation",
+    "wind_speed",
+    "wind_direction",
+    "hour",
+    "minute",
+    "day_of_week",
+    "day_of_year",
+    "month",
+    "hour_decimal",
+    "hour_sin",
+    "hour_cos",
+    "day_of_year_sin",
+    "day_of_year_cos",
+    "lag_1",
+    "lag_2",
+    "lag_4",
+    "lag_24",
+    "lag_96",
+    "rolling_mean_4",
+    "rolling_mean_12",
+    "rolling_mean_24",
+    "rolling_std_24"
+  ],
+  "metrics": {
+    "mae_kw": 1204.047491215447,
+    "rmse_kw": 2419.8187397617753,
+    "nrmse_percent": 8.33014030948746,
+    "nmae_percent": 4.144890845046708
+  },
+  "uncertainty_method": "Residual-based prediction intervals",
+  "plant_capacity_kw": 30000,
+  "training_timestamp": "2026-09-12T10:51:05Z",
+  "model_artifact": "ml/models/solar_weather_xgb.joblib"
+}
