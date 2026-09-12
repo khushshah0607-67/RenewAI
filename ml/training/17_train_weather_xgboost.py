@@ -1,10 +1,20 @@
+import sys
 from pathlib import Path
 
 import joblib
 import numpy as np
 import pandas as pd
-from xgboost import XGBRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from xgboost import XGBRegressor
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from ml.features.feature_engineering import (
+    MODEL_FEATURE_COLUMNS,
+    create_weather_features,
+)
 
 
 input_path = Path("data/processed/solar_weather_features.csv")
@@ -16,47 +26,19 @@ predictions_path = Path("data/processed/weather_xgb_predictions.csv")
 print("Loading weather-aware feature dataset...")
 
 df = pd.read_csv(input_path)
-df["timestamp"] = pd.to_datetime(df["timestamp"])
-
-df = df.sort_values("timestamp").reset_index(drop=True)
+df = create_weather_features(df)
 
 
-# Chronological train/test split
-split_index = int(len(df) * 0.8)
+# Chronological train/calibration/test split
+train_end = int(len(df) * 0.6)
+calibration_end = int(len(df) * 0.8)
 
-train = df.iloc[:split_index]
-test = df.iloc[split_index:]
+train = df.iloc[:train_end]
+calibration = df.iloc[train_end:calibration_end]
+test = df.iloc[calibration_end:]
 
 
-feature_columns = [
-    "ac_power_kw",
-    "ambient_temperature",
-    "relative_humidity",
-    "cloud_cover",
-    "shortwave_radiation_w_m2",
-    "irradiation",
-    "wind_speed",
-    "wind_direction",
-    "hour",
-    "minute",
-    "day_of_week",
-    "day_of_year",
-    "month",
-    "hour_decimal",
-    "hour_sin",
-    "hour_cos",
-    "day_of_year_sin",
-    "day_of_year_cos",
-    "lag_1",
-    "lag_2",
-    "lag_4",
-    "lag_24",
-    "lag_96",
-    "rolling_mean_4",
-    "rolling_mean_12",
-    "rolling_mean_24",
-    "rolling_std_24"
-]
+feature_columns = MODEL_FEATURE_COLUMNS
 
 target_column = "target_next_15min"
 
@@ -69,6 +51,7 @@ y_test = test[target_column]
 
 
 print(f"Training rows: {len(train)}")
+print(f"Calibration rows: {len(calibration)}")
 print(f"Testing rows: {len(test)}")
 print(f"Number of features: {len(feature_columns)}")
 
@@ -123,7 +106,8 @@ model_path.parent.mkdir(parents=True, exist_ok=True)
 joblib.dump(
     {
         "model": model,
-        "feature_columns": feature_columns
+        "feature_columns": feature_columns,
+        "model_version": "solar-weather-xgb-v1"
     },
     model_path
 )
