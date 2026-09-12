@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 
+from .plant import Plant
 from app.db.database import Base
 
 
