@@ -35,7 +35,7 @@ class TestFallbackHelpers(unittest.TestCase):
 
     def test_load_model_metadata(self):
         metadata = load_model_metadata()
-        self.assertEqual(metadata["model_version"], "solar-weather-xgb-v1")
+        self.assertEqual(metadata["model_version"], "renewai-generalized-xgb-v1")
 
     def test_normalize_plant_data(self):
         normalized = normalize_plant_data(self.plant_data)
@@ -93,19 +93,22 @@ class TestFallbackHelpers(unittest.TestCase):
         self.assertEqual(result["fallback_reason"], "WEATHER_UNAVAILABLE")
         self.assertTrue(result["forecast"])
 
-    def test_missing_historical_data_returns_error(self):
+    def test_insufficient_history_returns_fallback(self):
+        short_history = self.historical_data.head(96).copy()
+
         result = predict_generation(
             self.plant_data,
-            pd.DataFrame({"timestamp": []}),
+            short_history,
             self.weather_data,
         )
 
-        self.assertEqual(result["status"], "error")
-        self.assertEqual(result["error"]["code"], "MISSING_DATA")
+        self.assertEqual(result["status"], "fallback")
+        self.assertEqual(result["fallback_reason"], "INSUFFICIENT_HISTORY")
+        self.assertEqual(len(result["forecast"]), 96)
 
-    def test_invalid_timestamp_returns_invalid_input(self):
+    def test_invalid_timestamp_returns_fallback(self):
         invalid_historical = self.historical_data.copy()
-        invalid_historical["timestamp"] = ["bad"] * len(invalid_historical)
+        invalid_historical.loc[0, "timestamp"] = "bad"
 
         result = predict_generation(
             self.plant_data,
@@ -113,8 +116,9 @@ class TestFallbackHelpers(unittest.TestCase):
             self.weather_data,
         )
 
-        self.assertEqual(result["status"], "error")
-        self.assertEqual(result["error"]["code"], "INVALID_INPUT")
+        self.assertEqual(result["status"], "fallback")
+        self.assertEqual(result["fallback_reason"], "INVALID_INPUT")
+        self.assertEqual(len(result["forecast"]), 96)
 
     def test_duplicate_timestamps_are_detected(self):
         duplicate_historical = self.historical_data.copy()

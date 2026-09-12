@@ -8,7 +8,7 @@ Use `ml.inference.predict_generation.predict_generation(plant_data, historical_d
 
 - `plant_data`: dictionary with at least `plant_id`, `plant_capacity_kw`, and optional `timezone`
 - `historical_data`: historical generation table containing `timestamp` and `ac_power_kw`
-- `weather_data`: forecast weather table containing the required weather columns:
+- `weather_data`: future forecast weather table containing the required forecast weather columns:
   - `timestamp`
   - `ambient_temperature`
   - `relative_humidity`
@@ -36,19 +36,21 @@ Success payload fields are:
 
 ## Current model
 
-- Model version: `solar-weather-xgb-v1`
-- Model artifact: `ml/models/solar_weather_xgb.joblib`
+- Model version: `renewai-generalized-xgb-v1`
+- Production artifact: `ml/models/renewai_generalized_xgb.joblib`
 - Metadata artifact: `ml/models/model_metadata.json`
-- Feature count: 27
+- Feature count: 40
 - Forecast horizon: 24 hours (96 x 15-minute points)
 - Units: kW
 - Uncertainty method: residual-based prediction intervals
+- Supported renewable types: solar and wind
 
 ## Forecast behavior
 
 - Nighttime periods with `shortwave_radiation_w_m2 <= 1` are forced to zero output by the existing inference logic.
 - Prediction intervals are clipped to remain non-negative and within plant capacity.
 - `p10 <= p50 <= p90` is enforced before returning forecast rows.
+- The current production model is generalized across solar and wind sites and uses the unified feature schema generated in `data/processed/generalized_training/`.
 
 ## Fallback behavior
 
@@ -65,7 +67,7 @@ Fallback responses preserve a consistent payload shape and do not expose stack t
 The ML layer is responsible for:
 
 - shared feature engineering
-- weather-aware XGBoost inference
+- generalized weather-aware XGBoost inference
 - residual-based uncertainty intervals
 - metadata generation
 - stable input/output contract
@@ -84,19 +86,17 @@ Backend work should remain focused on:
 
 Current verified artifacts already exist under `data/processed/`:
 
-- `model_comparison.csv`
-- `horizon_evaluation.csv`
-- `model_evaluation_summary.txt`
-- `leakage_audit.json`
+- `generalized_training/feature_schema.json`
+- `generalized_training/site_metadata.csv`
+- `generalized_training/model_training_report.json`
+- `generalized_training/final_model_metadata.json`
+- `generalized_training/shap_feature_contributions.csv`
 - `uncertainty_calibration.json`
-- `uncertainty_evaluation.json`
-- `ml_contract_example.json`
-- `data_quality_report.json`
-- `data_quality_report.txt`
 - `ml_final_validation_report.json`
 - `ml_final_validation_report.txt`
 
 ## Known limitations
 
-- The processed historical dataset spans only about 34 days, so the current evaluation is a short-horizon prototype rather than production-grade evidence.
-- The current data-quality report flags 9 timestamp gaps and 106 missing expected intervals in the merged dataset, which is a known historical data limitation that should be handled upstream by the data pipeline.
+- The current evaluation remains a short-horizon prototype with a modest historical span for some sites, so the main production confidence is strongest for the generalized training and validation artifacts already generated.
+- Future forecast weather must still be supplied at inference time; the trained model does not infer future weather automatically.
+- The horizon summary is alignment-based rather than a recursive multi-step forecasting implementation.
