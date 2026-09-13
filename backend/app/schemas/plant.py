@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
 
 class PlantType(str, Enum):
@@ -15,7 +15,11 @@ class PlantBase(BaseModel):
     plant_type: PlantType
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
-    installed_capacity_mw: float = Field(..., gt=0)
+    installed_capacity_mw: float = Field(
+        ...,
+        gt=0,
+        validation_alias=AliasChoices("installed_capacity_mw", "capacity_mw"),
+    )
     export_limit_mw: float | None = Field(default=None, gt=0)
     timezone: str = Field(..., min_length=1, max_length=64)
 
@@ -34,7 +38,7 @@ class PlantBase(BaseModel):
             raise ValueError("export limit cannot be greater than installed capacity.")
         return self
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
 class PlantCreate(PlantBase):
@@ -46,7 +50,11 @@ class PlantUpdate(BaseModel):
     plant_type: PlantType | None = None
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
-    installed_capacity_mw: float | None = Field(default=None, gt=0)
+    installed_capacity_mw: float | None = Field(
+        default=None,
+        gt=0,
+        validation_alias=AliasChoices("installed_capacity_mw", "capacity_mw"),
+    )
     export_limit_mw: float | None = Field(default=None, gt=0)
     timezone: str | None = Field(default=None, min_length=1, max_length=64)
 
@@ -67,11 +75,16 @@ class PlantUpdate(BaseModel):
             raise ValueError("export limit cannot be greater than installed capacity.")
         return self
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
 class PlantResponse(PlantBase):
     id: int
     created_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    @computed_field
+    @property
+    def capacity_mw(self) -> float:
+        return self.installed_capacity_mw

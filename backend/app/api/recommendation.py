@@ -20,4 +20,9 @@ def get_plant_recommendation(
         raise HTTPException(status_code=404, detail="Plant not found")
 
     service = DecisionSupportService(db)
-    return service.build_recommendations(plant)
+    try:
+        return service.build_recommendations(plant)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except HTTPException:
+        raise

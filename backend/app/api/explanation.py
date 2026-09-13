@@ -20,4 +20,9 @@ def get_plant_explanation(
         raise HTTPException(status_code=404, detail="Plant not found")
 
     service = PrototypeExplainabilityService(db)
-    return service.explain_plant(plant)
+    try:
+        return service.explain_plant(plant)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except HTTPException:
+        raise

@@ -31,3 +31,20 @@ Thumbs.db
 
 # Local runtime artifacts
 *.log
+
+# Frontend build output
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+*.tsbuildinfo
+
+# Python runtime artifacts
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Python virtual environment
+.venv/
+venv/

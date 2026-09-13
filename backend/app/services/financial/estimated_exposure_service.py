@@ -33,7 +33,7 @@ class EstimatedExposureService:
         p50 = [row.p50_mw for row in forecast_rows]
         p90 = [row.p90_mw for row in forecast_rows]
 
-        capacity = float(plant.capacity_mw)
+        capacity = float(plant.installed_capacity_mw)
         if capacity <= 0:
             raise HTTPException(status_code=400, detail="Plant capacity must be greater than zero.")
 
@@ -50,7 +50,7 @@ class EstimatedExposureService:
             "plant_id": plant.id,
             "plant_name": plant.name,
             "plant_type": plant.plant_type,
-            "capacity_mw": plant.capacity_mw,
+            "capacity_mw": plant.installed_capacity_mw,
             "forecast_points": len(forecast_rows),
             "energy_price_inr_per_mwh": self.config.price_inr_per_mwh,
             "estimated_deviation_mwh": round(estimated_deviation_mwh, 2),

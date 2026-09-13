@@ -55,7 +55,7 @@ class RuleBasedRiskService:
         p10_points = [row.p10_mw for row in forecast_rows]
         p90_points = [row.p90_mw for row in forecast_rows]
 
-        capacity = float(plant.capacity_mw)
+        capacity = float(plant.installed_capacity_mw)
         if capacity <= 0:
             raise HTTPException(status_code=400, detail="Plant capacity must be greater than zero.")
 
@@ -102,7 +102,7 @@ class RuleBasedRiskService:
             "plant_id": plant.id,
             "plant_name": plant.name,
             "plant_type": plant.plant_type,
-            "capacity_mw": plant.capacity_mw,
+            "capacity_mw": plant.installed_capacity_mw,
             "forecast_points": len(forecast_rows),
             "overall_score": round(overall_score, 2),
             "risk_level": risk_level,

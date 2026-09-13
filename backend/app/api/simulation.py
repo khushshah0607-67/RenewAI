@@ -28,4 +28,9 @@ def simulate_plant_scenario(
         curtailment_allowance=scenario.curtailment_allowance,
         energy_price_inr_per_mwh=scenario.energy_price_inr_per_mwh,
     )
-    return service.simulate(plant, controls)
+    try:
+        return service.simulate(plant, controls)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except HTTPException:
+        raise

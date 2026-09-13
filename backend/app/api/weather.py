@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.errors import AppException
 from app.core.time_utils import normalize_datetime_to_utc
 from app.db.database import get_db
 from app.db.models.weather_data import WeatherData
@@ -34,12 +35,30 @@ def get_plant_weather(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     weather_service = WeatherService(db)
-    weather_records = weather_service.fetch_and_store_weather(
-        plant_id=plant_id,
-        latitude=plant.latitude,
-        longitude=plant.longitude,
-        timezone=plant.timezone,
-    )
+    try:
+        weather_records = weather_service.fetch_and_store_weather(
+            plant_id=plant_id,
+            latitude=plant.latitude,
+            longitude=plant.longitude,
+            timezone=plant.timezone,
+        )
+    except AppException:
+        raise
+    except Exception:
+        weather_records = weather_service.list_weather(
+            plant_id,
+            start=normalized_start,
+            end=normalized_end,
+            limit=limit,
+            offset=offset,
+            plant_timezone=plant.timezone,
+        )
+        if not weather_records:
+            raise AppException(
+                status_code=503,
+                code="WEATHER_SERVICE_UNAVAILABLE",
+                message="Weather provider is unavailable",
+            ) from None
 
     if start is not None or end is not None or limit is not None or offset > 0:
         return weather_service.list_weather(
