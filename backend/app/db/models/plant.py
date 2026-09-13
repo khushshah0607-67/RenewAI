@@ -22,6 +22,10 @@ class Plant(Base):
     plant_type: Mapped[str] = mapped_column(String(100), nullable=False)
     latitude: Mapped[float] = mapped_column(Float, nullable=False)
     longitude: Mapped[float] = mapped_column(Float, nullable=False)
+<<<<<<< Updated upstream
+=======
+    capacity_mw: Mapped[float] = mapped_column(Float, nullable=False)
+>>>>>>> Stashed changes
     installed_capacity_mw: Mapped[float] = mapped_column(Float, nullable=False)
     export_limit_mw: Mapped[float | None] = mapped_column(Float, nullable=True)
     timezone: Mapped[str] = mapped_column(String(64), nullable=False)

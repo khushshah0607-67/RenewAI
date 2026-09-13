@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import sys
 from pathlib import Path
 
@@ -5,6 +6,10 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+=======
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+>>>>>>> Stashed changes
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -20,6 +25,7 @@ from app.api.recommendation import router as recommendation_router
 from app.api.risk import router as risk_router
 from app.api.simulation import router as simulation_router
 from app.api.weather import router as weather_router
+<<<<<<< Updated upstream
 from app.core.config import get_settings
 from app.core.errors import AppException, error_response, normalize_http_exception
 from app.db.database import get_db
@@ -96,10 +102,30 @@ app = FastAPI(title="RenewAI API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
+=======
+from app.db.database import ensure_plants_schema, get_db
+
+app = FastAPI(title="RenewAI API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ],
+>>>>>>> Stashed changes
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+<<<<<<< Updated upstream
+=======
+try:
+    ensure_plants_schema()
+except Exception:
+    pass
+>>>>>>> Stashed changes
 app.include_router(plants_router, prefix="/api")
 app.include_router(weather_router, prefix="/api")
 app.include_router(forecast_router, prefix="/api")

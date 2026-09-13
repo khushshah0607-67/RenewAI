@@ -22,6 +22,7 @@ def get_plant_service(db: Session = Depends(get_db)) -> PlantService:
 
 
 @router.post("", response_model=PlantResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=PlantResponse, status_code=status.HTTP_201_CREATED)
 def create_plant(
     plant_data: PlantCreate,
     service: PlantService = Depends(get_plant_service),
