@@ -56,6 +56,38 @@ def test_cors_origins_are_configured():
     assert "http://localhost:5173" in cors_middleware.kwargs["allow_origins"]
 
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+from app.db.database import Base, get_db
+
+engine = create_engine(
+    "sqlite://",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+
+def override_get_db():
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@pytest.fixture(autouse=True)
+def isolate_test_db():
+    app.dependency_overrides.clear()
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        yield
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_secret_values_do_not_appear_in_api_error_responses(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://app_user:supersecret@localhost:5432/renewai")
     get_settings.cache_clear()

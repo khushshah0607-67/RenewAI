@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -26,8 +27,16 @@ def override_get_db():
         db.close()
 
 
-app.dependency_overrides.clear()
-app.dependency_overrides[get_db] = override_get_db
+@pytest.fixture(autouse=True)
+def isolate_test_db():
+    app.dependency_overrides.clear()
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        yield
+    finally:
+        app.dependency_overrides.clear()
+
+
 client = TestClient(app)
 
 

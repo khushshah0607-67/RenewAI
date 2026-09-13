@@ -26,7 +26,73 @@ from app.db.database import get_db
 
 settings = get_settings()
 
-app = FastAPI(title="RenewAI API")
+from contextlib import asynccontextmanager
+import math
+from datetime import datetime, timedelta, timezone
+
+from app.db.database import Base, SessionLocal, engine
+from app.db.models.historical_generation import HistoricalGeneration
+from app.db.models.plant import Plant
+
+
+def init_db_and_seed():
+    try:
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        try:
+            if db.query(Plant).count() == 0:
+                plant1 = Plant(
+                    name="Bhadla Solar Park",
+                    plant_type="SOLAR",
+                    latitude=27.53,
+                    longitude=71.91,
+                    installed_capacity_mw=500.0,
+                    export_limit_mw=450.0,
+                    timezone="Asia/Kolkata",
+                )
+                plant2 = Plant(
+                    name="Muppandal Wind Farm",
+                    plant_type="WIND",
+                    latitude=8.26,
+                    longitude=77.53,
+                    installed_capacity_mw=300.0,
+                    export_limit_mw=280.0,
+                    timezone="Asia/Kolkata",
+                )
+                db.add_all([plant1, plant2])
+                db.commit()
+                db.refresh(plant1)
+                db.refresh(plant2)
+
+                now = datetime.now(timezone.utc)
+                start_time = now - timedelta(hours=100)
+                records = []
+                for i in range(100):
+                    ts = start_time + timedelta(hours=i)
+                    hour = ts.hour
+                    if 6 <= hour <= 18:
+                        sin_val = math.sin((hour - 6) / 12.0 * math.pi)
+                        gen_mw = round(sin_val * 420.0 + (i % 5) * 2.0, 2)
+                    else:
+                        gen_mw = 0.0
+                    records.append(
+                        HistoricalGeneration(plant_id=plant1.id, timestamp=ts, generation_mw=gen_mw)
+                    )
+                db.add_all(records)
+                db.commit()
+        finally:
+            db.close()
+    except Exception:
+        pass
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db_and_seed()
+    yield
+
+
+app = FastAPI(title="RenewAI API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,

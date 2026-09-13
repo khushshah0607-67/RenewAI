@@ -44,7 +44,7 @@ export const apiClient = axios.create({
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiErrorPayload>) => {
-    let message = 'An unexpected network error occurred';
+    let message: string | null = null;
 
     const payload = error.response?.data;
     if (payload) {
@@ -62,15 +62,15 @@ apiClient.interceptors.response.use(
         message = payload.message;
       } else if (Array.isArray(payload.detail) && payload.detail.length > 0) {
         const firstDetail = payload.detail[0] as { msg?: string; message?: string };
-        message = firstDetail?.msg || firstDetail?.message || message;
+        message = firstDetail?.msg || firstDetail?.message || null;
       } else if (payload.detail && typeof payload.detail === 'object') {
         const detailObj = payload.detail as { message?: string; msg?: string };
-        message = detailObj.message || detailObj.msg || message;
+        message = detailObj.message || detailObj.msg || null;
       }
     }
 
-    if (error.message && !message.includes(error.message)) {
-      message = error.message;
+    if (!message) {
+      message = error.message || 'An unexpected network error occurred';
     }
 
     return Promise.reject(new Error(message));

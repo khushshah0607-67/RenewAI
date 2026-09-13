@@ -49,6 +49,13 @@ class RuleBasedRiskService:
     def assess_plant_risk(self, plant: Plant) -> dict:
         forecast_rows = self.forecast_repository.get_for_plant(plant.id)
         if not forecast_rows:
+            from app.services.forecasting.baseline_forecast_service import BaselineForecastService
+            try:
+                forecast_rows = BaselineForecastService(self.db).list_for_plant(plant.id)
+            except Exception:
+                forecast_rows = []
+
+        if not forecast_rows:
             raise HTTPException(status_code=404, detail="No forecast data available for this plant.")
 
         p50_points = [row.p50_mw for row in forecast_rows]

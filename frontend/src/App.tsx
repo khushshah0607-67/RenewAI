@@ -85,15 +85,7 @@ export const App: React.FC = () => {
     setIsRefreshing(true);
     setError(null);
     try {
-      const [
-        forecastData,
-        histData,
-        weatherData,
-        riskData,
-        financialData,
-        recData,
-        explainData,
-      ] = await Promise.all([
+      const results = await Promise.allSettled([
         api.getForecast(plant.id),
         api.getGeneration(plant.id, { limit: 48 }),
         api.getWeather(plant.id, { limit: 48 }),
@@ -103,13 +95,43 @@ export const App: React.FC = () => {
         api.getExplanation(plant.id),
       ]);
 
-      setForecasts(forecastData);
-      setHistorical(histData);
-      setWeather(weatherData);
-      setRisk(riskData);
-      setFinancial(financialData);
-      setRecommendations(recData);
-      setExplanation(explainData);
+      const [
+        forecastRes,
+        histRes,
+        weatherRes,
+        riskRes,
+        financialRes,
+        recRes,
+        explainRes,
+      ] = results;
+
+      if (forecastRes.status === 'fulfilled') setForecasts(forecastRes.value);
+      else setForecasts([]);
+
+      if (histRes.status === 'fulfilled') setHistorical(histRes.value);
+      else setHistorical([]);
+
+      if (weatherRes.status === 'fulfilled') setWeather(weatherRes.value);
+      else setWeather([]);
+
+      if (riskRes.status === 'fulfilled') setRisk(riskRes.value);
+      else setRisk(null);
+
+      if (financialRes.status === 'fulfilled') setFinancial(financialRes.value);
+      else setFinancial(null);
+
+      if (recRes.status === 'fulfilled') setRecommendations(recRes.value);
+      else setRecommendations(null);
+
+      if (explainRes.status === 'fulfilled') setExplanation(explainRes.value);
+      else setExplanation(null);
+
+      // If all failed, show error
+      const allRejected = results.every((r) => r.status === 'rejected');
+      if (allRejected) {
+        const firstErr = results.find((r) => r.status === 'rejected') as PromiseRejectedResult;
+        setError(firstErr?.reason?.message || 'Failed to load plant telemetry');
+      }
     } catch (err: any) {
       console.error('Error loading plant telemetry:', err);
       setError(err.message || 'Failed to load plant telemetry');
