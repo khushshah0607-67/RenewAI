@@ -1,15 +1,13 @@
-<<<<<<< Updated upstream
+import math
 import sys
+from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-=======
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
->>>>>>> Stashed changes
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -17,28 +15,21 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.api.financial import router as financial_router
 from app.api.explanation import router as explanation_router
+from app.api.financial import router as financial_router
 from app.api.forecast import router as forecast_router
 from app.api.plants import router as plants_router
 from app.api.recommendation import router as recommendation_router
 from app.api.risk import router as risk_router
 from app.api.simulation import router as simulation_router
 from app.api.weather import router as weather_router
-<<<<<<< Updated upstream
 from app.core.config import get_settings
 from app.core.errors import AppException, error_response, normalize_http_exception
-from app.db.database import get_db
-
-settings = get_settings()
-
-from contextlib import asynccontextmanager
-import math
-from datetime import datetime, timedelta, timezone
-
-from app.db.database import Base, SessionLocal, engine
+from app.db.database import Base, SessionLocal, engine, get_db
 from app.db.models.historical_generation import HistoricalGeneration
 from app.db.models.plant import Plant
+
+settings = get_settings()
 
 
 def init_db_and_seed():
@@ -73,17 +64,25 @@ def init_db_and_seed():
                 now = datetime.now(timezone.utc)
                 start_time = now - timedelta(hours=100)
                 records = []
+
                 for i in range(100):
                     ts = start_time + timedelta(hours=i)
                     hour = ts.hour
+
                     if 6 <= hour <= 18:
                         sin_val = math.sin((hour - 6) / 12.0 * math.pi)
                         gen_mw = round(sin_val * 420.0 + (i % 5) * 2.0, 2)
                     else:
                         gen_mw = 0.0
+
                     records.append(
-                        HistoricalGeneration(plant_id=plant1.id, timestamp=ts, generation_mw=gen_mw)
+                        HistoricalGeneration(
+                            plant_id=plant1.id,
+                            timestamp=ts,
+                            generation_mw=gen_mw,
+                        )
                     )
+
                 db.add_all(records)
                 db.commit()
         finally:
@@ -99,33 +98,15 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="RenewAI API", lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-=======
-from app.db.database import ensure_plants_schema, get_db
-
-app = FastAPI(title="RenewAI API")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-    ],
->>>>>>> Stashed changes
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-<<<<<<< Updated upstream
-=======
-try:
-    ensure_plants_schema()
-except Exception:
-    pass
->>>>>>> Stashed changes
+
 app.include_router(plants_router, prefix="/api")
 app.include_router(weather_router, prefix="/api")
 app.include_router(forecast_router, prefix="/api")
@@ -147,11 +128,18 @@ async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
+async def validation_exception_handler(
+    _: Request, exc: RequestValidationError
+) -> JSONResponse:
     details = [
-        {"loc": list(error.get("loc", [])), "msg": error.get("msg"), "type": error.get("type")}
+        {
+            "loc": list(error.get("loc", [])),
+            "msg": error.get("msg"),
+            "type": error.get("type"),
+        }
         for error in exc.errors()
     ]
+
     return error_response(
         status.HTTP_422_UNPROCESSABLE_ENTITY,
         "VALIDATION_ERROR",
@@ -161,7 +149,9 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError) 
 
 
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONResponse:
+async def unhandled_exception_handler(
+    _: Request, exc: Exception
+) -> JSONResponse:
     return error_response(
         status.HTTP_500_INTERNAL_SERVER_ERROR,
         "INTERNAL_SERVER_ERROR",
@@ -179,7 +169,7 @@ def ready(db: Session = Depends(get_db)) -> dict[str, str]:
     try:
         db.execute(text("SELECT 1"))
         return {"status": "ready"}
-    except Exception as exc:  # pragma: no cover - runtime dependency check
+    except Exception as exc:
         raise AppException(
             status_code=503,
             code="SERVICE_NOT_READY",
@@ -192,7 +182,7 @@ def db_health(db: Session = Depends(get_db)) -> dict[str, str]:
     try:
         db.execute(text("SELECT 1"))
         return {"status": "ok", "database": "connected"}
-    except Exception as exc:  # pragma: no cover - runtime dependency check
+    except Exception as exc:
         raise HTTPException(
             status_code=503,
             detail=f"Database connection failed: {exc}",

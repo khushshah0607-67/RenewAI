@@ -10,22 +10,6 @@ DEFAULT_QUERY_LIMIT = 100
 MAX_QUERY_LIMIT = 1000
 
 
-def _sync_capacity_fields(payload: dict) -> dict:
-    """Keep legacy capacity_mw and installed_capacity_mw in lockstep.
-
-    Production databases from later migrations have both columns as NOT NULL,
-    so inserting only one side fails plant creation.
-    """
-    synced = dict(payload)
-    capacity = synced.get("capacity_mw")
-    if capacity is None:
-        capacity = synced.get("installed_capacity_mw")
-    if capacity is not None:
-        synced["capacity_mw"] = capacity
-        synced["installed_capacity_mw"] = capacity
-    return synced
-
-
 class PlantRepository:
     def __init__(self, db: Session):
         self.db = db
@@ -45,15 +29,14 @@ class PlantRepository:
         return self.db.get(Plant, plant_id)
 
     def create(self, plant_data: PlantCreate) -> Plant:
-        plant = Plant(**_sync_capacity_fields(plant_data.model_dump(mode="json")))
+        plant = Plant(**plant_data.model_dump(mode="json"))
         self.db.add(plant)
         self.db.commit()
         self.db.refresh(plant)
         return plant
 
     def update(self, plant: Plant, plant_data: PlantUpdate) -> Plant:
-        updates = _sync_capacity_fields(plant_data.model_dump(exclude_unset=True, mode="json"))
-        for field, value in updates.items():
+        for field, value in plant_data.model_dump(exclude_unset=True, mode="json").items():
             setattr(plant, field, value)
 
         self.db.commit()
